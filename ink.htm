@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -6,17 +7,31 @@
   <meta content="yes" name="apple-touch-fullscreen">
   <meta content="black" name="apple-mobile-web-app-status-bar-style">
   <meta content="320" name="MobileOptimized">
-  <title>正在加载</title>
+  <title>正在跳转</title>
   <style>
-    /* 优化后的CSS - 移除重复代码 */
+    /* 优化后的CSS */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      flex-direction: column;
+    }
+    
+    .content-wrapper {
+      text-align: center;
+      max-width: 90%;
+    }
+
     .container {
       width: 100px;
       height: 100px;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      animation: rotate-move 2s ease-in-out infinite;
+      position: relative;
+      margin: 20px auto;
     }
 
     .dot {
@@ -70,45 +85,172 @@
       80% { transform: translateY(-25px) scale(.45) }
       100% { transform: translateY(0px) scale(1) }
     }
+    
+    .container {
+      animation: rotate-move 2s ease-in-out infinite;
+    }
 
     @keyframes rotate-move {
-      55% { transform: translate(-50%, -50%) rotate(0deg) }
-      80% { transform: translate(-50%, -50%) rotate(360deg) }
-      100% { transform: translate(-50%, -50%) rotate(360deg) }
+      55% { transform: rotate(0deg) }
+      80% { transform: rotate(360deg) }
+      100% { transform: rotate(360deg) }
+    }
+    
+    .domain-display {
+      margin-top: 30px;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 400px;
+      width: 90%;
+    }
+    
+    .domain-name {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+      word-break: break-all;
+    }
+    
+    .redirect-info {
+      font-size: 15px;
+      color: #666;
+      margin-top: 10px;
+    }
+    
+    .security-info {
+      font-size: 13px;
+      color: #888;
+      margin-top: 20px;
+      line-height: 1.5;
+    }
+    
+    .loading-text {
+      font-size: 16px;
+      color: #444;
+      margin-top: 15px;
+    }
+    
+    .continue-btn {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 30px;
+      background: #007aff;
+      color: white;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 16px;
+      transition: background 0.3s;
+    }
+    
+    .continue-btn:hover {
+      background: #0062cc;
+    }
+    
+    .brand {
+      position: absolute;
+      bottom: 20px;
+      font-size: 14px;
+      color: #999;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="dot dot-1"></div>
-    <div class="dot dot-2"></div>
-    <div class="dot dot-3"></div>
+  <div class="content-wrapper">
+    <div class="container">
+      <div class="dot dot-1"></div>
+      <div class="dot dot-2"></div>
+      <div class="dot dot-3"></div>
+    </div>
+    
+    <div class="loading-text">正在验证目标网站...</div>
+    
+    <div class="domain-display">
+      <div class="redirect-info">即将访问：</div>
+      <div class="domain-name" id="targetDomain">加载中...</div>
+      <div class="security-info" id="securityInfo">
+        请确保您信任该网站。我们不对目标网站的内容负责。
+      </div>
+    </div>
+    
+    <a href="#" class="continue-btn" id="continueBtn" style="display:none;">继续访问</a>
   </div>
+  
+  <div class="brand">安全跳转服务</div>
 
   <script>
-    // 修复后的JS代码 - 移除iframe改用直接跳转
     document.addEventListener('DOMContentLoaded', function() {
       var urlParams = new URLSearchParams(window.location.search);
       var encodedParam = urlParams.get('c');
+      var targetDomain = document.getElementById('targetDomain');
+      var continueBtn = document.getElementById('continueBtn');
+      var securityInfo = document.getElementById('securityInfo');
       
       if (encodedParam) {
         try {
           var trueurl = atob(encodedParam);
           
-          if (trueurl.includes("http")) {
-            // 1.5秒后隐藏加载动画并跳转
+          if (trueurl.startsWith("http")) {
+            // 解析并显示目标域名
+            var domain = extractDomain(trueurl);
+            targetDomain.textContent = domain;
+            
+            // 更新安全提示
+            securityInfo.innerHTML = `即将访问 <strong>${domain}</strong>。请确保您信任该网站。`;
+            
+            // 显示继续访问按钮
             setTimeout(function() {
-              document.querySelector('.container').style.display = 'none';
-              window.location.href = trueurl;
+              continueBtn.style.display = 'inline-block';
+              continueBtn.textContent = `访问 ${domain}`;
+              
+              // 添加跳转功能
+              continueBtn.href = trueurl;
+              
+              // 添加自动跳转倒计时
+              startCountdown(trueurl);
             }, 1500);
           } else {
-            console.log("URL must start with http:// or https://");
+            showError("URL必须以http://或https://开头");
           }
         } catch (e) {
-          console.error("Invalid Base64 URL", e);
+          showError("无效的链接参数");
         }
       } else {
-        console.log("No 'c' parameter found");
+        showError("缺少链接参数c");
+      }
+      
+      function extractDomain(url) {
+        try {
+          var domain = new URL(url).hostname;
+          // 移除www前缀
+          return domain.replace(/^www\./i, '');
+        } catch (e) {
+          return url;
+        }
+      }
+      
+      function showError(message) {
+        targetDomain.textContent = message;
+        targetDomain.style.color = "#e53935";
+        securityInfo.innerHTML = "请检查链接是否正确或联系网站管理员。";
+      }
+      
+      function startCountdown(url) {
+        var countdown = 5;
+        var countdownText = document.querySelector('.redirect-info');
+        var originalText = countdownText.textContent;
+        
+        var timer = setInterval(function() {
+          if (countdown > 0) {
+            countdownText.textContent = `即将访问（${countdown}秒后自动跳转）：`;
+            countdown--;
+          } else {
+            clearInterval(timer);
+            window.location.href = url;
+          }
+        }, 1000);
       }
     });
   </script>
